@@ -1,0 +1,81 @@
+
+var scriptName = "HumanRangePro";
+var scriptAuthor = "Helper";
+var scriptVersion = 4.5;
+
+var KillAura = moduleManager.getModule("KillAura");
+
+function HumanRangePro() {
+    var baseRange = value.createFloat("BaseRange", 3.15, 3.0, 5.0);
+    var jitterAmount = value.createFloat("Jitter", 0.08, 0.0, 0.2);
+    var updateDelay = value.createInteger("UpdateDelayTicks", 6, 1, 20); 
+    var targetOnly = value.createBoolean("OnlyWhenTargeting", true);
+    var autoRespawn = value.createBoolean("AutoRespawn", true);
+    var verticalCheck = value.createBoolean("HumanVertical", true);
+
+    var tickCounter = 0;
+    var lastValue = 3.0;
+
+    this.getName = function() { return "HumanRangePro"; }
+    this.getCategory = function() { return "Combat"; }
+
+    this.onUpdate = function() {
+        if (autoRespawn.get() && mc.thePlayer.isDead) {
+            if (mc.thePlayer.deathTime >= 5) {
+                mc.thePlayer.respawnPlayer();
+            }
+        }
+
+        if (KillAura.getState()) {
+            tickCounter++;
+
+            if (tickCounter >= updateDelay.get()) {
+                tickCounter = 0;
+
+                var isTargeting = (mc.objectMouseOver != null && mc.objectMouseOver.entityHit != null);
+                
+                if (targetOnly.get() && !isTargeting) {
+                    KillAura.getValue("Range").set(3.0);
+                    return;
+                }
+
+                var variation = (Math.random() * jitterAmount.get());
+                var humanValue = baseRange.get() + (Math.random() > 0.5 ? variation : -variation);
+
+                if (verticalCheck.get() && mc.thePlayer.fallDistance > 0.08) {
+                    humanValue -= 0.05;
+                }
+
+                if (mc.thePlayer.isSprinting()) {
+                    humanValue += (Math.random() * 0.03);
+                }
+
+                var finalValue = Math.max(3.0, Math.round(humanValue * 100) / 100);
+                KillAura.getValue("Range").set(finalValue);
+                lastValue = finalValue;
+            }
+        }
+    }
+
+    this.onDisable = function() {
+        if (KillAura.getValue("Range")) {
+            KillAura.getValue("Range").set(3.0);
+        }
+        tickCounter = 0;
+    }
+
+    this.addValues(baseRange, jitterAmount, updateDelay, targetOnly, autoRespawn, verticalCheck);
+}
+
+var humanRangePro = new HumanRangePro();
+var instance;
+
+function onEnable() {
+    instance = moduleManager.registerModule(humanRangePro);
+}
+
+function onDisable() {
+    moduleManager.unregisterModule(instance);
+}
+
+
