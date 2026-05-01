@@ -1,7 +1,1 @@
-const script = registerScript({
-    name: "MyCustomScript",
-    version: "1.0.0",
-    authors: [“Eric"]
-});
-
- 
+var scriptName = "HumanRangePro", scriptAuthor = "Helper", scriptVersion = 5.5, KillAura = moduleManager.getModule("KillAura"); script.registerModule(new HumanRangePro());
