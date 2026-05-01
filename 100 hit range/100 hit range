@@ -1,0 +1,37 @@
+var scriptName = "HumanRangePro";
+var scriptAuthor = "Helper";
+var scriptVersion = 3.0;
+var KillAura = moduleManager.getModule("KillAura");
+function HumanRangePro() {
+var baseRange = value.createFloat("BaseRange", 3.2, 3.0, 5.0);
+var jitterAmount = value.createFloat("Jitter", 0.15, 0.0, 0.5);
+var targetOnly = value.createBoolean("OnlyWhenTargeting", true);
+this.getName = function() { return "HumanRangePro"; }
+this.getCategory = function() { return "Combat"; }
+this.onUpdate = function() {
+if (KillAura.getState()) {
+if (targetOnly.get() && mc.objectMouseOver.entityHit == null) {
+KillAura.getValue("Range").set(3.0);
+return;
+}
+var variation = (Math.random() * jitterAmount.get());
+var humanValue = baseRange.get() + (Math.random() > 0.5 ? variation : -variation);
+KillAura.getValue("Range").set(Math.max(3.0, humanValue));
+}
+}
+this.onDisable = function() {
+if (KillAura.getValue("Range")) {
+KillAura.getValue("Range").set(3.0);
+}
+}
+this.addValues(baseRange, jitterAmount, targetOnly);
+}
+var humanRangePro = new HumanRangePro();
+var instance;
+function onEnable() {
+instance = moduleManager.registerModule(humanRangePro);
+}
+function onDisable() {
+moduleManager.unregisterModule(instance);
+}
+
