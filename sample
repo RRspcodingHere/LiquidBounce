@@ -1,0 +1,7 @@
+const script = registerScript({
+    name: "MyCustomScript",
+    version: "1.0.0",
+    authors: [“Eric"]
+});
+
+ 
