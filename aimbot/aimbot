@@ -1,0 +1,79 @@
+var scriptName = "HumanRangePro";
+var scriptAuthor = "Helper";
+var scriptVersion = 5.5;
+
+var KillAura = moduleManager.getModule("KillAura");
+
+function HumanRangePro() {
+    var baseRange = value.createFloat("BaseRange", 3.15, 3.0, 5.0);
+    var jitterAmount = value.createFloat("Jitter", 0.08, 0.0, 0.2);
+    var aimSpeed = value.createFloat("AimSpeed", 4.0, 1.0, 15.0);
+    var aimFov = value.createFloat("AimFOV", 80.0, 10.0, 180.0);
+    var updateDelay = value.createInteger("UpdateDelayTicks", 6, 1, 20); 
+    var autoRespawn = value.createBoolean("AutoRespawn", true);
+    var predict = value.createBoolean("Predict", true);
+
+    var tickCounter = 0;
+
+    this.getName = function() { return "HumanRangePro"; }
+    this.getCategory = function() { return "Combat"; }
+
+    this.onUpdate = function() {
+        if (autoRespawn.get() && mc.thePlayer.isDead && mc.thePlayer.deathTime >= 5) {
+            mc.thePlayer.respawnPlayer();
+        }
+
+        var target = KillAura.target;
+        if (KillAura.getState() && target != null) {
+            
+            var posX = target.posX + (predict.get() ? (target.posX - target.prevPosX) * 2 : 0);
+            var posZ = target.posZ + (predict.get() ? (target.posZ - target.prevPosZ) * 2 : 0);
+            var posY = target.posY + target.getEyeHeight() - 0.15;
+
+            var diffX = posX - mc.thePlayer.posX;
+            var diffZ = posZ - mc.thePlayer.posZ;
+            var diffY = posY - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight());
+            var dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
+
+            var targetYaw = (Math.atan2(diffZ, diffX) * 180 / Math.PI) - 90;
+            var targetPitch = -(Math.atan2(diffY, dist) * 180 / Math.PI);
+
+            var yawDiff = ((targetYaw - mc.thePlayer.rotationYaw) % 360 + 540) % 360 - 180;
+            var pitchDiff = targetPitch - mc.thePlayer.rotationPitch;
+
+            if (Math.abs(yawDiff) <= aimFov.get()) {
+                var smooth = 21 - aimSpeed.get();
+                mc.thePlayer.rotationYaw += yawDiff / smooth;
+                mc.thePlayer.rotationPitch += pitchDiff / smooth;
+            }
+
+            tickCounter++;
+            if (tickCounter >= updateDelay.get()) {
+                tickCounter = 0;
+                var variation = (Math.random() * jitterAmount.get());
+                var humanValue = baseRange.get() + (Math.random() > 0.5 ? variation : -variation);
+                KillAura.getValue("Range").set(Math.max(3.0, Math.round(humanValue * 100) / 100));
+            }
+        }
+    }
+
+    this.onDisable = function() {
+        if (KillAura.getValue("Range")) KillAura.getValue("Range").set(3.0);
+        tickCounter = 0;
+    }
+
+    this.addValues(baseRange, jitterAmount, aimSpeed, aimFov, updateDelay, autoRespawn, predict);
+}
+
+var humanRangePro = new HumanRangePro();
+var instance;
+
+function onEnable() {
+    instance = moduleManager.registerModule(humanRangePro);
+}
+
+function onDisable() {
+    moduleManager.unregisterModule(instance);
+}
+
+
