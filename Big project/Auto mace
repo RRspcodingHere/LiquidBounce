@@ -1,0 +1,76 @@
+var scriptName = "HumanMacePro";
+var scriptAuthor = "Helper";
+var scriptVersion = 8.5;
+
+var KillAura = moduleManager.getModule("KillAura");
+
+function HumanMacePro() {
+    var baseRange = value.createFloat("BaseRange", 3.15, 3.0, 5.0);
+    var jitterAmount = value.createFloat("Jitter", 0.08, 0.0, 0.2);
+    var aimSpeed = value.createFloat("AimSpeed", 4.0, 1.0, 15.0);
+    var aimFov = value.createFloat("AimFOV", 80.0, 10.0, 180.0);
+    var updateDelay = value.createInteger("UpdateDelayTicks", 2, 1, 20); 
+    var onlyClick = value.createBoolean("OnlyClick", true);
+    var autoMaceSwap = value.createBoolean("AutoMaceSwap", true);
+    var predict = value.createBoolean("Predict", true);
+
+    this.getName = function() { return "HumanMacePro"; }
+    this.getCategory = function() { return "Combat"; }
+
+    this.onUpdate = function() {
+        if (mc.thePlayer.isDead) return;
+
+        if (onlyClick.get() && !mc.gameSettings.keyBindAttack.isKeyDown()) return;
+
+        var target = KillAura.target;
+        if (KillAura.getState() && target != null) {
+            
+            if (autoMaceSwap.get()) {
+                var isFalling = mc.thePlayer.fallDistance > 1.5;
+                var maceSlot = -1;
+
+                for (var i = 0; i < 9; i++) {
+                    var stack = mc.thePlayer.inventory.getStackInSlot(i);
+                    if (stack != null && stack.getDisplayName().toLowerCase().contains("mace")) {
+                        maceSlot = i;
+                        break;
+                    }
+                }
+
+                if (isFalling && maceSlot != -1) {
+                    mc.thePlayer.inventory.currentItem = maceSlot;
+                }
+            }
+
+            var posX = target.posX + (predict.get() ? (target.posX - target.prevPosX) * 2 : 0);
+            var posZ = target.posZ + (predict.get() ? (target.posZ - target.prevPosZ) * 2 : 0);
+            var posY = target.posY + target.getEyeHeight() - 0.15;
+
+            var diffX = posX - mc.thePlayer.posX;
+            var diffZ = posZ - mc.thePlayer.posZ;
+            var diffY = posY - (mc.thePlayer.posY + mc.thePlayer.getEyeHeight());
+            var dist = Math.sqrt(diffX * diffX + diffZ * diffZ);
+
+            var targetYaw = (Math.atan2(diffZ, diffX) * 180 / Math.PI) - 90;
+            var targetPitch = -(Math.atan2(diffY, dist) * 180 / Math.PI);
+            var yawDiff = ((targetYaw - mc.thePlayer.rotationYaw) % 360 + 540) % 360 - 180;
+            
+            if (Math.abs(yawDiff) <= aimFov.get()) {
+                var smooth = 21 - aimSpeed.get();
+                mc.thePlayer.rotationYaw += yawDiff / smooth;
+                mc.thePlayer.rotationPitch += (targetPitch - mc.thePlayer.rotationPitch) / smooth;
+            }
+
+            var dynamicRange = baseRange.get() + (Math.random() * jitterAmount.get());
+            if (mc.thePlayer.getDistanceToEntity(target) <= dynamicRange) {
+                if (mc.thePlayer.ticksExisted % updateDelay.get() == 0) {
+                    mc.thePlayer.swingItem();
+                    mc.playerController.attackEntity(mc.thePlayer, target);
+                }
+            }
+        }
+    }
+}
+
+var humanMacePro = new HumanMacePro();
+var clientModule = script.registerModule(humanMacePro);
